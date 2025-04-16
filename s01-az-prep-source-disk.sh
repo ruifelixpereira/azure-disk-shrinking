@@ -10,6 +10,11 @@ required_vars=(
     "originalDiskName"
     "sourceSnapshotName"
     "sourceDiskName"
+    "prepVirtualMachineName"
+    "prepVmSize"
+    "prepVirtualMachineSubnetId"
+    "prepOSDiskSnapshotName"
+    "prepOSDiskName"
 )
 
 # Set the current directory to where the script lives.
@@ -56,14 +61,14 @@ az account set --subscription $subscriptionId
 #fi
 
 # Check if disk exists
-DISK_ID=$(az disk show --name "$originalDiskName" --resource-group "$resourceGroupName" --query id -o tsv 2>/dev/null)
-if [ -z "$DISK_ID" ]; then
+ORIGINAL_DISK_ID=$(az disk show --name "$originalDiskName" --resource-group "$resourceGroupName" --query id -o tsv 2>/dev/null)
+if [ -z "$ORIGINAL_DISK_ID" ]; then
     echo "Disk $originalDiskName does not exist in resource group $resourceGroupName."
     exit 1
 fi
 
 # Get original disk details
-Disk=$(az disk show --ids "$DISK_ID" --query "{sku:sku.name, hyperVGeneration:hyperVGeneration, diskSizeGB:diskSizeGB}" -o json)
+Disk=$(az disk show --ids "$ORIGINAL_DISK_ID" --query "{sku:sku.name, hyperVGeneration:hyperVGeneration, diskSizeGB:diskSizeGB}" -o json)
 #HyperVGen=$(echo "$Disk" | jq -r '.hyperVGeneration')
 diskSizeGB=$(echo "$Disk" | jq -r '.diskSizeGB')
 
@@ -71,12 +76,33 @@ diskSizeGB=$(echo "$Disk" | jq -r '.diskSizeGB')
 storageType=$(echo "$Disk" | jq -r '.sku')
 
 # Create snapshot from the original disk
-snapshotId=$(az snapshot create --name $sourceSnapshotName --resource-group $resourceGroupName --incremental false --source $originalDiskName --query [id] -o tsv)
-
-# Get the snapshot Id 
-#snapshotId=$(az snapshot show --name $sourceSnapshotName --resource-group $resourceGroupName --query [id] -o tsv)
+sourceSnapshotId=$(az snapshot create --name $sourceSnapshotName --resource-group $resourceGroupName --incremental false --source $originalDiskName --query [id] -o tsv)
 
 # Create a new Managed Disks using the snapshot Id
 # Note that managed disk will be created in the same location as the snapshot
 # If you're creating a Premium SSD v2 or an Ultra Disk, add "--zone $zone" to the end of the command
-az disk create --resource-group $resourceGroupName --name $sourceDiskName --sku $storageType --size-gb $diskSizeGB --source $snapshotId
+SOURCE_DISK_ID=$(az disk create --resource-group $resourceGroupName --name $sourceDiskName --sku $storageType --size-gb $diskSizeGB --source $sourceSnapshotId --query [id] -o tsv)
+
+# Get the OS disk snapshot Id 
+snapshotId=$(az snapshot show --name $prepOSDiskSnapshotName --resource-group $resourceGroupName --query [id] -o tsv)
+
+# Create a new Managed Disks using the snapshot Id
+# Note that managed disk will be created in the same location as the snapshot
+OS_DISK_ID=$(az disk create --resource-group $resourceGroupName --name $prepOSDiskName --sku "StandardSSD_LRS" --size-gb 16 --source $snapshotId --query [id] -o tsv)
+
+# Create VM by attaching existing managed disks as OS
+az vm create \
+    --name $prepVirtualMachineName \
+    --resource-group $resourceGroupName \
+    --attach-os-disk $OS_DISK_ID \
+    --attach-data-disks $SOURCE_DISK_ID \
+    --os-type "Linux" \
+    --subnet $prepVirtualMachineSubnetId \
+    --public-ip-address "" \
+    --size $prepVmSize \
+    --tag "CreatedBy=script"
+
+# Enable boot diagnostics
+az vm boot-diagnostics enable \
+    --name $prepVirtualMachineName \
+    --resource-group $resourceGroupName
