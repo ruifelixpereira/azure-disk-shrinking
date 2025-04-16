@@ -105,12 +105,6 @@ echo "Checking filesystem..."
 echo "----------------------"
 echo ""
 
-#fsck.ext4 -D -ff /dev/rl/root -y
-#fsck.ext4 -D -ff /dev/rl/tmp -y
-#fsck.ext4 -D -ff /dev/rl/opt -y
-#fsck.ext4 -D -ff /dev/rl/tlanBiS -y
-#fsck.ext4 -D -ff /dev/rl/var_lib_pgsql -y
-
 # Get the array of logical volumes with new sizes
 IFS=',' read -r -a array <<< "$lv_sizes"
 
@@ -142,31 +136,6 @@ echo "---------------------------"
 echo "Resizing logical volumes..."
 echo "---------------------------"
 echo ""
-
-# 20G -> 10G
-#lvresize --resizefs -L 10G /dev/rl/root
-#resize2fs /dev/rl/root 10GB
-#lvreduce -L10G /dev/rl/root
-
-# 2G -> 1G
-#lvresize --resizefs -L 1G /dev/rl/tmp
-#resize2fs /dev/rl/tmp 1GB
-#lvreduce -L1G /dev/rl/tmp
-
-# 10G -> 8G 
-#lvresize --resizefs -L 8G /dev/rl/opt
-#resize2fs /dev/rl/opt 8GB
-#lvreduce -L8G /dev/rl/opt
-
-# 15G -> 12G
-#lvresize --resizefs -L 12G /dev/rl/tlanBiS
-#resize2fs /dev/rl/tlanBiS 12GB
-#lvreduce -L12G /dev/rl/tlanbis
-
-# 15G -> 13G
-#lvresize --resizefs -L 13G /dev/rl/var_lib_pgsql
-#resize2fs /dev/rl/var_lib_pgsql 13GB
-#lvreduce -L13G /dev/rl/var_lib_pgsql
 
 for lv in "${array[@]}"; do
 
