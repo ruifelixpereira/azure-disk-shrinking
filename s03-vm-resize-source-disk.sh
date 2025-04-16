@@ -41,7 +41,15 @@ check_required_arguments() {
 # Check if all required arguments have been set
 check_required_arguments
 
-#sudo su -
+#
+# Install packages
+#
+
+# Install LVM2 tools if needed
+dnf install lvm2
+
+# Install python 2
+dnf install -y python2
 
 #
 # Check the filesystem
