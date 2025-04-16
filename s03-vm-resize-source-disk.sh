@@ -45,6 +45,8 @@ check_required_arguments
 # Install packages
 #
 
+echo "Installing required packages..."
+
 # Install LVM2 tools if needed
 dnf install lvm2
 
@@ -54,6 +56,8 @@ dnf install -y python2
 #
 # Check the filesystem
 #
+
+echo "Checking filesystem..."
 
 #fsck.ext4 -D -ff /dev/rl/root -y
 #fsck.ext4 -D -ff /dev/rl/tmp -y
@@ -71,8 +75,6 @@ for lv in "${array[@]}"; do
     lv_path="/dev/rl/${subarray[0]}"
     new_size="${subarray[1]}"
 
-    echo "Processing $lv_path to resize to $new_size..."
-
     # Check if the logical volume exists
     if [ ! -e "$lv_path" ]; then
         echo "Logical volume $lv_path does not exist. Skipping."
@@ -81,12 +83,15 @@ for lv in "${array[@]}"; do
 
     # Check the filesystem
     echo "Running filesystem check on $lv_path..."
-    echo "fsck.ext4 -D -ff \"$lv_path\" -y"
+    fsck.ext4 -D -ff "$lv_path" -y
+
 done
 
 #
 # Resize the logical volumes
 #
+
+echo "Resizing logical volumes..."
 
 # 20G -> 10G
 #lvresize --resizefs -L 10G /dev/rl/root
@@ -113,3 +118,21 @@ done
 #resize2fs /dev/rl/var_lib_pgsql 13GB
 #lvreduce -L13G /dev/rl/var_lib_pgsql
 
+for lv in "${array[@]}"; do
+
+    # Get the name and size of LV
+    IFS=':' read -r -a subarray <<< "$lv"
+    lv_path="/dev/rl/${subarray[0]}"
+    new_size="${subarray[1]}"
+
+    # Check if the logical volume exists
+    if [ ! -e "$lv_path" ]; then
+        echo "Logical volume $lv_path does not exist. Skipping."
+        continue
+    fi
+
+    # Resize the LV
+    echo "Resizing $lv_path to $new_size..."
+    lvresize --resizefs -L $new_size $lv_path
+    
+done
