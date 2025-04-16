@@ -6,6 +6,10 @@ set -a && source .env && set +a
 # Required variables
 required_vars=(
     "lv_sizes"
+    "pv_name"
+    "vg_name"
+    "partition_device"
+    "partition_number"
 )
 
 # Set the current directory to where the script lives.
@@ -38,6 +42,36 @@ check_required_arguments() {
 
 ####################################################################################
 
+# Function to calculate the new size of an existing partition based on the size of the volume group PV and resize it
+resize_partition() {
+    local vg_name=$1
+    local partition=$2
+    local partition_number=$3
+
+    # Safety gap in sectors (4 sectors = 8192 bytes)
+    # This is to ensure that the partition does not overlap with the LVM metadata area
+    # and to leave some space for the filesystem overhead.
+    local safety_gap=4
+
+    # Run vgdisplay command and capture the output
+    vgdisplay_output=$(vgdisplay "$vg_name" --units m)
+
+    # Extract the VG size from the output
+    vg_size=$(echo "$vgdisplay_output" | grep "VG Size" | awk '{print $3}')
+
+    # Get the start sector of the existing partition
+    start_sector=$(sfdisk -d "$partition" | grep "first-lba" | awk '{print $2}')
+
+    # Calculate the new size in sectors (assuming 512 bytes per sector)
+    new_size_sectors=$(echo "$vg_size * 1024 * 1024 / 512 + $start_sector + $safety_gap" | bc)
+
+    # Resizing the partition
+    echo "Resizing partition partition with a total of $new_size_sectors sectors"
+    echo " ,$new_size_sectors" | sfdisk --no-reread --force -N $partition_number $partition
+}
+
+####################################################################################
+
 # Check if all required arguments have been set
 check_required_arguments
 
@@ -52,6 +86,10 @@ dnf install lvm2
 
 # Install python 2
 dnf install -y python2
+
+# Install basic calcuator
+dnf install -y bc
+
 
 #
 # Check the filesystem
@@ -136,3 +174,25 @@ for lv in "${array[@]}"; do
     lvresize --resizefs -L $new_size $lv_path
     
 done
+
+
+#
+# Resize physical volume
+#
+
+echo "Resizing physical volume..."
+
+# Install python script
+curl -o pvshrink https://raw.githubusercontent.com/ruifelixpereira/azure-disk-shrinking/refs/heads/main/pvshrink
+chmod +x pvshrink
+
+# Resize PV
+./pvshrink -v $pv_name
+
+#
+# Resize partition
+#
+echo "Resizing partition..."
+
+# Resize the partition
+resize_partition "$vg_name" "$partition_device" $partition_number

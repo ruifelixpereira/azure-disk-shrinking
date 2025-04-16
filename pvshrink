@@ -139,7 +139,7 @@ total_size = pe_size * total_allocated + metadata_size
 print("Total size %d b + %d x %d b = %d b (%s)" % (metadata_size, total_allocated, pe_size, total_size, human_readable(total_size)))
 
 if not args.test:
-    ret = subprocess.call(["pvresize", "-v","--setphysicalvolumesize", "%db" % total_size, device])
+    ret = subprocess.call(["pvresize", "-v","-y","--setphysicalvolumesize", "%db" % total_size, device])
     if ret != 0:
         print("pvresize returned %d" % ret)
         sys.exit(1)
