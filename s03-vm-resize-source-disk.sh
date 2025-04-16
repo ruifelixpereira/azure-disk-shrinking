@@ -61,9 +61,15 @@ dnf install -y python2
 #fsck.ext4 -D -ff /dev/rl/tlanBiS -y
 #fsck.ext4 -D -ff /dev/rl/var_lib_pgsql -y
 
-for lv in "${!lv_sizes[@]}"; do
-    lv_path="/dev/rl/$lv"
-    new_size="${lv_sizes[$lv]}"
+# Get the array of logical volumes with new sizes
+IFS=',' read -r -a array <<< "$lv_sizes"
+
+for lv in "${array[@]}"; do
+
+    # Get the name and size of LV
+    IFS=':' read -r -a subarray <<< "$lv"
+    lv_path="/dev/rl/${subarray[0]}"
+    new_size="${subarray[1]}"
 
     echo "Processing $lv_path to resize to $new_size..."
 
