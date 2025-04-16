@@ -79,7 +79,11 @@ check_required_arguments
 # Install packages
 #
 
+echo ""
+echo "-------------------------------"
 echo "Installing required packages..."
+echo "-------------------------------"
+echo ""
 
 # Install LVM2 tools if needed
 dnf install lvm2
@@ -95,7 +99,11 @@ dnf install -y bc
 # Check the filesystem
 #
 
+echo ""
+echo "----------------------"
 echo "Checking filesystem..."
+echo "----------------------"
+echo ""
 
 #fsck.ext4 -D -ff /dev/rl/root -y
 #fsck.ext4 -D -ff /dev/rl/tmp -y
@@ -129,7 +137,11 @@ done
 # Resize the logical volumes
 #
 
+echo ""
+echo "---------------------------"
 echo "Resizing logical volumes..."
+echo "---------------------------"
+echo ""
 
 # 20G -> 10G
 #lvresize --resizefs -L 10G /dev/rl/root
@@ -180,7 +192,11 @@ done
 # Resize physical volume
 #
 
+echo ""
+echo "---------------------------"
 echo "Resizing physical volume..."
+echo "---------------------------"
+echo ""
 
 # Install python script
 curl -o pvshrink https://raw.githubusercontent.com/ruifelixpereira/azure-disk-shrinking/refs/heads/main/pvshrink
@@ -192,7 +208,17 @@ chmod +x pvshrink
 #
 # Resize partition
 #
+
+echo ""
+echo "---------------------"
 echo "Resizing partition..."
+echo "---------------------"
+echo ""
 
 # Resize the partition
 resize_partition "$vg_name" "$partition_device" $partition_number
+
+echo ""
+echo "---------------------"
+echo "Done..."
+echo "---------------------"
